@@ -1,0 +1,54 @@
+name: release-zip
+
+on:
+    push:
+        tags:
+            - 'v*'
+
+permissions:
+    contents: write
+
+jobs:
+    bundle:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10.26.0
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build release bundle
+              run: bash scripts/release-zip.sh "${GITHUB_REF_NAME}"
+
+            - name: Upload workflow artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: flowise-release-${{ github.ref_name }}
+                  path: |
+                      dist/releases/*.zip
+                      dist/releases/*.sha256
+                      dist/releases/*-release-notes.md
+
+            - name: Publish release assets
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: |
+                      dist/releases/*.zip
+                      dist/releases/*.sha256
+                      dist/releases/*-release-notes.md
+                  generate_release_notes: true
